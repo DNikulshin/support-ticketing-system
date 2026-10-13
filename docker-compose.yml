@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: support_ticket_server
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=file:/app/prisma/prod.db
+      - JWT_SECRET=super-secret-jwt-key-for-support-tickets
+      - JWT_EXPIRES_IN=7d
+      - UPLOAD_DIR=/app/uploads
+      - CLIENT_URL=http://localhost:5173
+    volumes:
+      - server_db:/app/prisma
+      - server_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/docs || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: support_ticket_client
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      server:
+        condition: service_healthy
+
+volumes:
+  server_db:
+  server_uploads:
